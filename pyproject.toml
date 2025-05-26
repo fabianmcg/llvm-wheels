@@ -1,0 +1,109 @@
+# ===----------------------------------------------------------------------=== #
+# Project
+# ===----------------------------------------------------------------------=== #
+[project]
+name = "llvm"
+dynamic = ["version"]
+authors = [{name = "Fabian Mora", email = "fmora.dev@gmail.com"}]
+description = "LLVM devel distribution"
+requires-python = ">= 3.10"
+
+[project.urls]
+LLVM = "http://llvm.org/"
+MLIR = "http://mlir.llvm.org/"
+
+
+# ===----------------------------------------------------------------------=== #
+# Build configuration
+# ===----------------------------------------------------------------------=== #
+[build-system]
+requires = [
+    "scikit-build-core>=0.11",
+    "setuptools>=42",
+    "wheel",
+    "pybind11[global]>=2.10.4",
+    "nanobind==2.4.0",
+    "PyYAML",
+]
+build-backend = "scikit_build_core.build"
+
+[tool.scikit-build]
+wheel.license-files = ["LICENSE"]
+editable.mode = "inplace"
+cmake.version = ">=3.20.0"
+ninja.version = ">=1.10.0"
+build.verbose = true
+logging.level = "DEBUG"
+build-dir = "build"
+
+[[tool.scikit-build.generate]]
+path = "llvm/_version.py"
+template = '''
+version = "${version}"
+'''
+
+[tool.scikit-build.metadata.version]
+provider = "scikit_build_core.metadata.regex"
+input = "llvm_version.txt"
+
+[tool.scikit-build.wheel.packages]
+llvm = "src/llvm"
+
+[project.scripts]
+"llvm" = "llvm:cli"
+
+[tool.scikit-build.cmake.define]
+LLVM_TARGETS_TO_BUILD = "Native,NVPTX,AMDGPU,"
+CMAKE_C_COMPILER = "clang"
+CMAKE_CXX_COMPILER = "clang++"
+LLVM_ENABLE_LLD = true
+LLVM_CCACHE_BUILD = true
+LLVM_ENABLE_ASSERTIONS = true
+MLIR_ENABLE_BINDINGS_PYTHON = true
+LLVM_DYLIB = true
+
+# ===----------------------------------------------------------------------=== #
+# Wheel distribution configuration
+# ===----------------------------------------------------------------------=== #
+
+[tool.cibuildwheel]
+build-verbosity = 1
+skip = ["*-manylinux_i686", "*-musllinux*", "pp*", "*-win32"]
+archs = ["auto64"]
+build = "cp310-* cp311-* cp312-* cp313-*"
+manylinux-x86_64-image = "manylinux_2_28"
+manylinux-aarch64-image = "quay.io/pypa/manylinux_2_34_aarch64"
+environment-pass = [
+    # ccache
+    "CCACHE_DIR",
+    "CCACHE_MAXSIZE=2000M",
+    "CCACHE_SLOPPINESS",
+    "CCACHE_CPP2",
+    "CCACHE_UMASK",
+    "CCACHE_NOHASHDIR",
+]
+
+[tool.cibuildwheel.linux]
+before-all = [
+    "python set_llvm_version.py",
+    "dnf install --setopt install_weak_deps=false -y clang lld ccache",
+]
+before-build = [
+    "rm -rf build"
+]
+
+# synchronize TZ with host so ccache files have correct timestamp
+container-engine = { name = "docker", create-args = ["-v", "/etc/timezone:/etc/timezone:ro", "-v", "/etc/localtime:/etc/localtime:ro"] }
+
+repair-wheel-command = [
+    "auditwheel repair -w {dest_dir} {wheel}"
+]
+
+[tool.cibuildwheel.macos]
+before-build = [
+    "ccache -z",
+    "rm -rf build"
+]
+repair-wheel-command = [
+    "delocate-wheel --require-archs {delocate_archs} -w {dest_dir} -v {wheel} --ignore-missing-dependencies"
+]
