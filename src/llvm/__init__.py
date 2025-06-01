@@ -10,6 +10,7 @@ from subprocess import run as _run
 import sys as _sys
 
 from ._version import version as LLVM_VERSION
+from .llvm_version import *
 
 __version__ = LLVM_VERSION
 
@@ -27,6 +28,11 @@ def bin_path() -> _Path:
 def lib_path() -> _Path:
     """Returns the library path"""
     return root_path() / "lib"
+
+
+def llvm_lib_path(name: str) -> _Path:
+    """Returns the library path"""
+    return root_path() / _Path("lib", f"lib{name}.so.{LLVM_SONAME_SUFFIX}")
 
 
 def cmake_path() -> _Path:
@@ -120,7 +126,12 @@ def _cli() -> int:
     group.add_argument(
         "--tools", action="store_true", help="Prints the available tools"
     )
-    group.add_argument("--tool-path", type=str, help="Prints the tool path")
+    group.add_argument(
+        "--tool-path", type=str, default="", help="Prints the tool path"
+    )
+    group.add_argument(
+        "--library-path", type=str, default="", help="Prints a library path"
+    )
     args = parser.parse_args()
     if args.root_path:
         print(str(root_path()))
@@ -138,8 +149,11 @@ def _cli() -> int:
     if args.tools:
         print("\n".join(map(lambda x: "  " + str(x), tools.values())))
         return 0
-    if args.tool_path is not None:
+    if args.tool_path:
         print(LLVMTool(args.tool_path).get_path())
+    if args.library_path:
+        print(str(llvm_lib_path(args.library_path)))
+
     return 0
 
 

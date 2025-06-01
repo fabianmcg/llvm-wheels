@@ -86,3 +86,7 @@ ExternalProject_add(build-llvm
   CMAKE_ARGS ${LLVM_CMAKE_ARGS}
   BUILD_COMMAND cmake --build . --target ${LLVM_CMAKE_TARGETS}
 )
+
+install(CODE
+  "execute_process(COMMAND \${CMAKE_SOURCE_DIR}/llvm-post-install.sh ${LLVM_INSTALL_PATH})"
+)
