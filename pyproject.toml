@@ -34,7 +34,7 @@ cmake.version = ">=3.20.0"
 ninja.version = ">=1.10.0"
 build.verbose = true
 logging.level = "DEBUG"
-build-dir = "build/{wheel_tag}"
+build-dir = "build"
 
 [[tool.scikit-build.generate]]
 path = "llvm/_version.py"
@@ -88,6 +88,10 @@ before-all = [
     "python set_llvm_version.py",
     "dnf install --setopt install_weak_deps=false -y clang lld ccache",
 ]
+before-build = [
+    "rm -rf build"
+]
+
 # synchronize TZ with host so ccache files have correct timestamp
 container-engine = { name = "docker", create-args = ["-v", "/etc/timezone:/etc/timezone:ro", "-v", "/etc/localtime:/etc/localtime:ro"] }
 
@@ -98,6 +102,7 @@ repair-wheel-command = [
 [tool.cibuildwheel.macos]
 before-build = [
     "ccache -z",
+    "rm -rf build"
 ]
 repair-wheel-command = [
     "delocate-wheel --require-archs {delocate_archs} -w {dest_dir} -v {wheel} --ignore-missing-dependencies"
